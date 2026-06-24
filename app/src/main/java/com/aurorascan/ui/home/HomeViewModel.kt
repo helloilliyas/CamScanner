@@ -11,6 +11,7 @@ import com.aurorascan.domain.usecase.ImportIdCardUseCase
 import com.aurorascan.domain.usecase.ImportScanUseCase
 import com.aurorascan.domain.usecase.SearchDocumentsUseCase
 import com.aurorascan.engine.scan.DocumentScanEngine
+import com.aurorascan.engine.scan.ScanMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -51,9 +52,17 @@ class HomeViewModel @Inject constructor(
     suspend fun buildScanIntentSender(activity: Activity): IntentSender =
         scanEngine.createScanIntentSender(activity, pageLimit = 50, allowGalleryImport = true)
 
-    /** ID mode captures up to two sides (front, back) in one session. */
+    /**
+     * ID mode captures up to two sides (front, back) in one session and uses the
+     * BASE scanner mode so the card keeps its original colors (no filters).
+     */
     suspend fun buildIdScanIntentSender(activity: Activity): IntentSender =
-        scanEngine.createScanIntentSender(activity, pageLimit = 2, allowGalleryImport = true)
+        scanEngine.createScanIntentSender(
+            activity,
+            pageLimit = 2,
+            allowGalleryImport = true,
+            mode = ScanMode.BASE,
+        )
 
     fun onScanActivityResult(resultCode: Int, data: Intent?) {
         val result = scanEngine.parseResult(resultCode, data)

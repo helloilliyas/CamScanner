@@ -16,11 +16,22 @@ interface DocumentScanEngine {
         activity: Activity,
         pageLimit: Int?,
         allowGalleryImport: Boolean,
+        mode: ScanMode = ScanMode.FULL,
     ): IntentSender
 
     /** Parses the activity result returned by the launched scanner. */
     fun parseResult(resultCode: Int, data: Intent?): ScanResult
 }
+
+/**
+ * Capture/editing mode.
+ *
+ * - [FULL] offers the enhancement filters (auto, grayscale, B&W) — good for
+ *   documents.
+ * - [BASE] only detects and crops the page, keeping the original colors — used
+ *   for ID cards so the card is captured true-to-original on a white page.
+ */
+enum class ScanMode { FULL, BASE }
 
 data class ScannedPageSource(val imageUri: Uri)
 

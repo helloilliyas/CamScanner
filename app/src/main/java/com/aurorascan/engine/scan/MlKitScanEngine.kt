@@ -22,14 +22,19 @@ class MlKitScanEngine @Inject constructor() : DocumentScanEngine {
         activity: Activity,
         pageLimit: Int?,
         allowGalleryImport: Boolean,
+        mode: ScanMode,
     ): IntentSender = withContext(Dispatchers.Main) {
+        val scannerMode = when (mode) {
+            ScanMode.FULL -> GmsDocumentScannerOptions.SCANNER_MODE_FULL
+            ScanMode.BASE -> GmsDocumentScannerOptions.SCANNER_MODE_BASE
+        }
         val builder = GmsDocumentScannerOptions.Builder()
             .setGalleryImportAllowed(allowGalleryImport)
             .setResultFormats(
                 GmsDocumentScannerOptions.RESULT_FORMAT_JPEG,
                 GmsDocumentScannerOptions.RESULT_FORMAT_PDF,
             )
-            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+            .setScannerMode(scannerMode)
         if (pageLimit != null) builder.setPageLimit(pageLimit)
 
         val scanner = GmsDocumentScanning.getClient(builder.build())
