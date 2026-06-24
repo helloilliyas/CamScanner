@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aurorascan.core.model.Document
 import com.aurorascan.domain.usecase.DeleteDocumentUseCase
+import com.aurorascan.domain.usecase.ImportIdCardUseCase
 import com.aurorascan.domain.usecase.ImportScanUseCase
 import com.aurorascan.domain.usecase.SearchDocumentsUseCase
 import com.aurorascan.engine.scan.DocumentScanEngine
@@ -26,6 +27,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val searchDocuments: SearchDocumentsUseCase,
     private val importScan: ImportScanUseCase,
+    private val importIdCard: ImportIdCardUseCase,
     private val deleteDocument: DeleteDocumentUseCase,
     private val scanEngine: DocumentScanEngine,
 ) : ViewModel() {
@@ -49,6 +51,10 @@ class HomeViewModel @Inject constructor(
     suspend fun buildScanIntentSender(activity: Activity): IntentSender =
         scanEngine.createScanIntentSender(activity, pageLimit = 50, allowGalleryImport = true)
 
+    /** ID mode captures up to two sides (front, back) in one session. */
+    suspend fun buildIdScanIntentSender(activity: Activity): IntentSender =
+        scanEngine.createScanIntentSender(activity, pageLimit = 2, allowGalleryImport = true)
+
     fun onScanActivityResult(resultCode: Int, data: Intent?) {
         val result = scanEngine.parseResult(resultCode, data)
         if (result.isEmpty) return
@@ -56,6 +62,19 @@ class HomeViewModel @Inject constructor(
             runCatching { importScan(result) }
                 .onSuccess { _messages.tryEmit("Saved ${result.pages.size}-page scan. Running OCR…") }
                 .onFailure { _messages.tryEmit("Could not save scan: ${it.message}") }
+        }
+    }
+
+    fun onIdScanActivityResult(resultCode: Int, data: Intent?) {
+        val result = scanEngine.parseResult(resultCode, data)
+        if (result.isEmpty) return
+        viewModelScope.launch {
+            runCatching { importIdCard(result) }
+                .onSuccess {
+                    val sides = if (result.pages.size >= 2) "front & back" else "1 side"
+                    _messages.tryEmit("Saved ID card ($sides) on one page.")
+                }
+                .onFailure { _messages.tryEmit("Could not save ID card: ${it.message}") }
         }
     }
 

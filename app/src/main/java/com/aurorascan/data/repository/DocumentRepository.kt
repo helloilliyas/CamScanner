@@ -21,6 +21,15 @@ interface DocumentRepository {
      */
     suspend fun importScan(scan: ScanResult, title: String): String
 
+    /** Appends scanned pages to an existing document (building up a "book"). */
+    suspend fun addPages(documentId: String, scan: ScanResult)
+
+    /**
+     * Composites ID-card sides onto a single A4 page and stores it as a new
+     * one-page document (CamScanner-style ID copy). Returns the new document id.
+     */
+    suspend fun importIdCard(scan: ScanResult, title: String): String
+
     /** Runs OCR for every page that still needs it and refreshes the search text. */
     suspend fun runOcrForDocument(documentId: String, languageHints: Set<String>)
 

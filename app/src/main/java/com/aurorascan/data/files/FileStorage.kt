@@ -1,11 +1,13 @@
 package com.aurorascan.data.files
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 import javax.inject.Inject
@@ -82,6 +84,40 @@ class FileStorage @Inject constructor(
             width = bounds.outWidth.coerceAtLeast(0),
             height = bounds.outHeight.coerceAtLeast(0),
             checksumSha256 = digest.digest().joinToString("") { "%02x".format(it) },
+        )
+    }
+
+    /**
+     * Writes an app-synthesized image (e.g. a composited ID-card page) as the
+     * page original, using the same atomic write-then-rename guarantee.
+     */
+    suspend fun writeOriginalBitmap(
+        documentId: String,
+        pageId: String,
+        bitmap: Bitmap,
+        quality: Int = 92,
+    ): ImportedImage = withContext(Dispatchers.IO) {
+        val dir = pageDir(documentId, pageId)
+        val finalFile = File(dir, "original.jpg")
+        val tmpFile = File(dir, "original.jpg.tmp")
+
+        val bytes = ByteArrayOutputStream().use { stream ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
+            stream.toByteArray()
+        }
+        tmpFile.outputStream().use { it.write(bytes); it.flush() }
+
+        check(tmpFile.length() > 0) { "Composed image is empty" }
+        if (finalFile.exists()) finalFile.delete()
+        check(tmpFile.renameTo(finalFile)) { "Atomic rename failed for $finalFile" }
+
+        val checksum = MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it) }
+        ImportedImage(
+            relativePath = relativeOf(finalFile),
+            width = bitmap.width,
+            height = bitmap.height,
+            checksumSha256 = checksum,
         )
     }
 

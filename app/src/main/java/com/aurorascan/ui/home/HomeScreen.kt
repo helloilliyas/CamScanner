@@ -13,9 +13,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -56,6 +59,12 @@ fun HomeScreen(
         viewModel.onScanActivityResult(result.resultCode, result.data)
     }
 
+    val idScanLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        viewModel.onIdScanActivityResult(result.resultCode, result.data)
+    }
+
     androidx.compose.runtime.LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
@@ -64,20 +73,41 @@ fun HomeScreen(
         topBar = { TopAppBar(title = { Text("Documents") }) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                text = { Text("Scan") },
-                icon = { Icon(Icons.Outlined.DocumentScanner, contentDescription = null) },
-                onClick = {
-                    scope.launch {
-                        runCatching {
-                            val sender = viewModel.buildScanIntentSender(context.findActivity())
-                            scanLauncher.launch(IntentSenderRequest.Builder(sender).build())
-                        }.onFailure {
-                            snackbarHostState.showSnackbar("Scanner unavailable: ${it.message}")
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                FloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            runCatching {
+                                val sender = viewModel.buildIdScanIntentSender(context.findActivity())
+                                idScanLauncher.launch(IntentSenderRequest.Builder(sender).build())
+                            }.onFailure {
+                                snackbarHostState.showSnackbar("Scanner unavailable: ${it.message}")
+                            }
                         }
-                    }
-                },
-            )
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
+                ) {
+                    Icon(Icons.Outlined.CreditCard, contentDescription = "Scan ID card")
+                }
+                ExtendedFloatingActionButton(
+                    text = { Text("Scan") },
+                    icon = { Icon(Icons.Outlined.DocumentScanner, contentDescription = null) },
+                    onClick = {
+                        scope.launch {
+                            runCatching {
+                                val sender = viewModel.buildScanIntentSender(context.findActivity())
+                                scanLauncher.launch(IntentSenderRequest.Builder(sender).build())
+                            }.onFailure {
+                                snackbarHostState.showSnackbar("Scanner unavailable: ${it.message}")
+                            }
+                        }
+                    },
+                )
+            }
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {

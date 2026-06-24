@@ -61,6 +61,53 @@ class ImportScanUseCase @Inject constructor(
     }
 }
 
+/** Appends scanned pages to an existing document and re-runs OCR for it. */
+class AddPagesUseCase @Inject constructor(
+    private val repository: DocumentRepository,
+    private val ocrScheduler: OcrScheduler,
+) {
+    suspend operator fun invoke(
+        documentId: String,
+        scan: ScanResult,
+        languageHints: Set<String> = setOf("en"),
+    ) {
+        repository.addPages(documentId, scan)
+        ocrScheduler.schedule(documentId, languageHints)
+    }
+}
+
+/** Composites an ID card (front/back) onto one page and schedules OCR. */
+class ImportIdCardUseCase @Inject constructor(
+    private val repository: DocumentRepository,
+    private val ocrScheduler: OcrScheduler,
+) {
+    suspend operator fun invoke(
+        scan: ScanResult,
+        title: String? = null,
+        languageHints: Set<String> = setOf("en"),
+    ): String {
+        val resolvedTitle = title?.takeIf { it.isNotBlank() } ?: defaultTitle()
+        val documentId = repository.importIdCard(scan, resolvedTitle)
+        ocrScheduler.schedule(documentId, languageHints)
+        return documentId
+    }
+
+    private fun defaultTitle(): String {
+        val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        return "ID Card ${formatter.format(Date())}"
+    }
+}
+
+class RenameDocumentUseCase @Inject constructor(
+    private val repository: DocumentRepository,
+) {
+    suspend operator fun invoke(documentId: String, title: String) {
+        val trimmed = title.trim()
+        require(trimmed.isNotEmpty()) { "Title cannot be empty" }
+        repository.rename(documentId, trimmed)
+    }
+}
+
 class ExportSearchablePdfUseCase @Inject constructor(
     private val repository: DocumentRepository,
 ) {

@@ -44,6 +44,9 @@ interface DocumentDao {
     @Query("UPDATE documents SET title = :title, updatedAt = :updatedAt WHERE id = :id")
     suspend fun rename(id: String, title: String, updatedAt: Long)
 
+    @Query("UPDATE documents SET pageCount = :count, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updatePageCount(id: String, count: Int, updatedAt: Long)
+
     @Query("UPDATE documents SET searchableText = :text, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateSearchableText(id: String, text: String, updatedAt: Long)
 

@@ -1,5 +1,6 @@
 package com.aurorascan.data.repository
 
+import android.net.Uri
 import androidx.room.withTransaction
 import com.aurorascan.core.model.CropGeometry
 import com.aurorascan.core.model.Document
@@ -12,6 +13,7 @@ import com.aurorascan.data.local.AuroraDatabase
 import com.aurorascan.data.local.entity.DocumentEntity
 import com.aurorascan.data.local.entity.OcrPageEntity
 import com.aurorascan.data.local.entity.PageEntity
+import com.aurorascan.engine.image.IdCardComposer
 import com.aurorascan.engine.ocr.OcrBlock
 import com.aurorascan.engine.ocr.OcrEngine
 import com.aurorascan.engine.pdf.PdfBuildSpec
@@ -34,6 +36,7 @@ class DocumentRepositoryImpl @Inject constructor(
     private val fileStorage: FileStorage,
     private val ocrEngine: OcrEngine,
     private val pdfEngine: PdfEngine,
+    private val idCardComposer: IdCardComposer,
 ) : DocumentRepository {
 
     private val documentDao = database.documentDao()
@@ -67,29 +70,8 @@ class DocumentRepositoryImpl @Inject constructor(
         val now = System.currentTimeMillis()
         val documentId = UUID.randomUUID().toString()
 
-        val cropJson = AuroraJson.encodeToString(CropGeometry.FULL)
-        val recipeJson = AuroraJson.encodeToString(EnhancementRecipe.DEFAULT)
-
         val pages = scan.pages.mapIndexed { index, source ->
-            val pageId = UUID.randomUUID().toString()
-            val imported = fileStorage.importOriginal(source.imageUri, documentId, pageId)
-            PageEntity(
-                id = pageId,
-                documentId = documentId,
-                position = index,
-                originalPath = imported.relativePath,
-                previewPath = null,
-                renderedPath = null,
-                width = imported.width,
-                height = imported.height,
-                rotationDegrees = 0,
-                cropJson = cropJson,
-                enhancementRecipeJson = recipeJson,
-                ocrStatus = OcrStatus.PENDING,
-                checksumSha256 = imported.checksumSha256,
-                createdAt = now,
-                updatedAt = now,
-            )
+            buildImportedPage(documentId, source.imageUri, index, now)
         }
 
         val document = DocumentEntity(
@@ -113,6 +95,107 @@ class DocumentRepositoryImpl @Inject constructor(
             pageDao.insertAll(pages)
         }
         return documentId
+    }
+
+    override suspend fun addPages(documentId: String, scan: ScanResult) {
+        require(!scan.isEmpty) { "No pages to add" }
+        val existing = pageDao.getForDocument(documentId)
+        val startPosition = (existing.maxOfOrNull { it.position } ?: -1) + 1
+        val now = System.currentTimeMillis()
+
+        val newPages = scan.pages.mapIndexed { index, source ->
+            buildImportedPage(documentId, source.imageUri, startPosition + index, now)
+        }
+
+        database.withTransaction {
+            pageDao.insertAll(newPages)
+            documentDao.updatePageCount(documentId, existing.size + newPages.size, now)
+        }
+    }
+
+    override suspend fun importIdCard(scan: ScanResult, title: String): String {
+        require(!scan.isEmpty) { "Cannot import an empty ID scan" }
+        val now = System.currentTimeMillis()
+        val documentId = UUID.randomUUID().toString()
+        val pageId = UUID.randomUUID().toString()
+
+        val composed = idCardComposer.compose(scan.pages.map { it.imageUri })
+        val imported = try {
+            fileStorage.writeOriginalBitmap(documentId, pageId, composed)
+        } finally {
+            composed.recycle()
+        }
+
+        val page = PageEntity(
+            id = pageId,
+            documentId = documentId,
+            position = 0,
+            originalPath = imported.relativePath,
+            previewPath = null,
+            renderedPath = null,
+            width = imported.width,
+            height = imported.height,
+            rotationDegrees = 0,
+            cropJson = defaultCropJson,
+            enhancementRecipeJson = defaultRecipeJson,
+            ocrStatus = OcrStatus.PENDING,
+            checksumSha256 = imported.checksumSha256,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val document = DocumentEntity(
+            id = documentId,
+            title = title,
+            folderId = null,
+            createdAt = now,
+            updatedAt = now,
+            pageCount = 1,
+            favorite = false,
+            deletedAt = null,
+            localRevision = 1,
+            remoteRevision = null,
+            syncState = SyncState.LOCAL_ONLY,
+            coverPageId = pageId,
+            searchableText = "",
+        )
+
+        database.withTransaction {
+            documentDao.upsert(document)
+            pageDao.insertAll(listOf(page))
+        }
+        return documentId
+    }
+
+    private val defaultCropJson: String by lazy { AuroraJson.encodeToString(CropGeometry.FULL) }
+    private val defaultRecipeJson: String by lazy {
+        AuroraJson.encodeToString(EnhancementRecipe.DEFAULT)
+    }
+
+    private suspend fun buildImportedPage(
+        documentId: String,
+        source: Uri,
+        position: Int,
+        now: Long,
+    ): PageEntity {
+        val pageId = UUID.randomUUID().toString()
+        val imported = fileStorage.importOriginal(source, documentId, pageId)
+        return PageEntity(
+            id = pageId,
+            documentId = documentId,
+            position = position,
+            originalPath = imported.relativePath,
+            previewPath = null,
+            renderedPath = null,
+            width = imported.width,
+            height = imported.height,
+            rotationDegrees = 0,
+            cropJson = defaultCropJson,
+            enhancementRecipeJson = defaultRecipeJson,
+            ocrStatus = OcrStatus.PENDING,
+            checksumSha256 = imported.checksumSha256,
+            createdAt = now,
+            updatedAt = now,
+        )
     }
 
     override suspend fun runOcrForDocument(documentId: String, languageHints: Set<String>) {
