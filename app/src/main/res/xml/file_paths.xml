@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Exported PDFs live under filesDir/documents/{id}/exports/. -->
+    <files-path
+        name="documents"
+        path="documents/" />
+</paths>
