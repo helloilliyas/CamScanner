@@ -1,5 +1,7 @@
 package com.aurorascan.di
 
+import com.aurorascan.data.repository.AnnotationRepository
+import com.aurorascan.data.repository.AnnotationRepositoryImpl
 import com.aurorascan.data.repository.DocumentRepository
 import com.aurorascan.data.repository.DocumentRepositoryImpl
 import com.aurorascan.data.repository.SignatureRepository
@@ -44,4 +46,8 @@ abstract class BindingsModule {
     @Binds
     @Singleton
     abstract fun bindSignatureRepository(impl: SignatureRepositoryImpl): SignatureRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAnnotationRepository(impl: AnnotationRepositoryImpl): AnnotationRepository
 }

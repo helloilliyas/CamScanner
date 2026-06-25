@@ -23,4 +23,21 @@ data class PdfPageSpec(
     val rotationDegrees: Int = 0,
     /** Normalized OCR geometry used to place the invisible text layer. */
     val ocrBlocks: List<OcrBlock> = emptyList(),
+    /** Overlays (signature/stamp/date) flattened into the page at export. */
+    val annotations: List<PdfAnnotation> = emptyList(),
+)
+
+/**
+ * A flattened overlay. If [assetFile] is set it is drawn as an image
+ * (transparent PNG); otherwise [text] is drawn. Geometry is normalized to the
+ * page (0..1).
+ */
+data class PdfAnnotation(
+    val assetFile: File?,
+    val text: String?,
+    val centerX: Float,
+    val centerY: Float,
+    val widthFraction: Float,
+    val aspectRatio: Float,
+    val rotationDegrees: Float,
 )

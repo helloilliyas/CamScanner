@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.PostAdd
@@ -58,6 +59,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun DetailScreen(
     onBack: () -> Unit,
+    onSign: (String) -> Unit,
     viewModel: DetailViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -99,6 +101,11 @@ fun DetailScreen(
                     }
                 },
                 actions = {
+                    document?.let { doc ->
+                        IconButton(onClick = { onSign(doc.id) }) {
+                            Icon(Icons.Outlined.Draw, contentDescription = "Sign & stamp")
+                        }
+                    }
                     IconButton(onClick = { renaming = true }) {
                         Icon(Icons.Outlined.DriveFileRenameOutline, contentDescription = "Rename")
                     }

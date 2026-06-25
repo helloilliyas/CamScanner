@@ -16,6 +16,7 @@ import com.aurorascan.data.local.entity.PageEntity
 import com.aurorascan.engine.image.IdCardComposer
 import com.aurorascan.engine.ocr.OcrBlock
 import com.aurorascan.engine.ocr.OcrEngine
+import com.aurorascan.engine.pdf.PdfAnnotation
 import com.aurorascan.engine.pdf.PdfBuildSpec
 import com.aurorascan.engine.pdf.PdfEngine
 import com.aurorascan.engine.pdf.PdfPageSpec
@@ -42,6 +43,7 @@ class DocumentRepositoryImpl @Inject constructor(
     private val documentDao = database.documentDao()
     private val pageDao = database.pageDao()
     private val ocrDao = database.ocrDao()
+    private val annotationDao = database.annotationDao()
 
     override fun observeDocuments(): Flow<List<Document>> =
         documentDao.observeDocuments().map { list -> list.map { it.toDomain() } }
@@ -255,16 +257,29 @@ class DocumentRepositoryImpl @Inject constructor(
         val pages = pageDao.getForDocument(documentId)
         require(pages.isNotEmpty()) { "Document has no pages to export" }
         val ocr = ocrDao.getForPages(pages.map { it.id }).associateBy { it.pageId }
+        val annotationsByPage = annotationDao.getForPages(pages.map { it.id }).groupBy { it.pageId }
 
         val pageSpecs = pages.map { page ->
             val blocks: List<OcrBlock> = ocr[page.id]?.let {
                 runCatching { AuroraJson.decodeFromString<List<OcrBlock>>(it.blocksJson) }
                     .getOrDefault(emptyList())
             } ?: emptyList()
+            val annotations = annotationsByPage[page.id].orEmpty().map { a ->
+                PdfAnnotation(
+                    assetFile = a.assetPath?.let { fileStorage.resolve(it) },
+                    text = a.text,
+                    centerX = a.centerX,
+                    centerY = a.centerY,
+                    widthFraction = a.widthFraction,
+                    aspectRatio = a.aspectRatio,
+                    rotationDegrees = a.rotationDegrees,
+                )
+            }
             PdfPageSpec(
                 imageFile = fileStorage.resolve(page.renderedPath ?: page.originalPath),
                 rotationDegrees = page.rotationDegrees,
                 ocrBlocks = blocks,
+                annotations = annotations,
             )
         }
 

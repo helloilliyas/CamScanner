@@ -6,6 +6,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -79,9 +81,48 @@ class AndroidPdfEngine @Inject constructor() : PdfEngine {
             }
         }
 
+        drawAnnotations(canvas, page.annotations, pageWidth, pageHeight)
+
         pdf.finishPage(pdfPage)
         if (bitmap !== raw) bitmap.recycle()
         raw.recycle()
+    }
+
+    private fun drawAnnotations(
+        canvas: Canvas,
+        annotations: List<PdfAnnotation>,
+        pageWidth: Int,
+        pageHeight: Int,
+    ) {
+        if (annotations.isEmpty()) return
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
+        val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+        annotations.forEach { ann ->
+            val w = ann.widthFraction * pageWidth
+            val h = if (ann.aspectRatio > 0f) w / ann.aspectRatio else w
+            val cx = ann.centerX * pageWidth
+            val cy = ann.centerY * pageHeight
+
+            canvas.save()
+            canvas.rotate(ann.rotationDegrees, cx, cy)
+            val asset = ann.assetFile
+            if (asset != null && asset.exists()) {
+                val bmp = BitmapFactory.decodeFile(asset.absolutePath)
+                if (bmp != null) {
+                    val dst = RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
+                    canvas.drawBitmap(bmp, Rect(0, 0, bmp.width, bmp.height), dst, imagePaint)
+                    bmp.recycle()
+                }
+            } else if (!ann.text.isNullOrBlank()) {
+                textPaint.textSize = h.coerceAtLeast(1f)
+                val measured = textPaint.measureText(ann.text).coerceAtLeast(1f)
+                textPaint.textScaleX = (w / measured).coerceIn(0.3f, 3f)
+                val baseline = cy + h * 0.35f
+                canvas.drawText(ann.text, cx - w / 2f, baseline, textPaint)
+            }
+            canvas.restore()
+        }
     }
 
     private fun applyRotation(bitmap: Bitmap, degrees: Int): Bitmap {

@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.aurorascan.ui.detail.DetailScreen
 import com.aurorascan.ui.home.HomeScreen
+import com.aurorascan.ui.sign.SignEditorScreen
 import com.aurorascan.ui.signatures.ManageSignaturesScreen
 
 object Routes {
@@ -15,7 +16,9 @@ object Routes {
     const val ARG_DOCUMENT_ID = "documentId"
     const val DOCUMENT = "document/{$ARG_DOCUMENT_ID}"
     const val SIGNATURES = "signatures"
+    const val SIGN = "sign/{$ARG_DOCUMENT_ID}"
     fun document(documentId: String) = "document/$documentId"
+    fun sign(documentId: String) = "sign/$documentId"
 }
 
 @Composable
@@ -35,7 +38,16 @@ fun AuroraNavHost() {
             route = Routes.DOCUMENT,
             arguments = listOf(navArgument(Routes.ARG_DOCUMENT_ID) { type = NavType.StringType }),
         ) {
-            DetailScreen(onBack = { navController.popBackStack() })
+            DetailScreen(
+                onBack = { navController.popBackStack() },
+                onSign = { documentId -> navController.navigate(Routes.sign(documentId)) },
+            )
+        }
+        composable(
+            route = Routes.SIGN,
+            arguments = listOf(navArgument(Routes.ARG_DOCUMENT_ID) { type = NavType.StringType }),
+        ) {
+            SignEditorScreen(onBack = { navController.popBackStack() })
         }
     }
 }
