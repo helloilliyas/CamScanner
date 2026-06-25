@@ -292,8 +292,8 @@ private fun SignToolbar(onSignStamp: () -> Unit, onDate: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.Start,
         ) {
             ToolbarAction(label = "Sign & Stamp", onClick = onSignStamp) {
                 Icon(Icons.Outlined.Draw, contentDescription = null)
