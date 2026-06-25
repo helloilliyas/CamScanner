@@ -101,8 +101,8 @@ class SignEditorViewModel @Inject constructor(
                 type = if (asset.kind == AssetKind.STAMP) AnnotationType.STAMP else AnnotationType.SIGNATURE,
                 assetPath = asset.path,
                 text = null,
-                centerX = 0.5f,
-                centerY = 0.7f,
+                centerX = 0.3f,
+                centerY = 0.6f,
                 widthFraction = 0.35f,
                 aspectRatio = aspect.coerceAtLeast(0.1f),
                 rotationDegrees = 0f,
@@ -122,8 +122,8 @@ class SignEditorViewModel @Inject constructor(
             type = AnnotationType.DATE,
             assetPath = null,
             text = today,
-            centerX = 0.5f,
-            centerY = 0.85f,
+            centerX = 0.3f,
+            centerY = 0.74f,
             widthFraction = 0.3f,
             aspectRatio = 3.5f,
             rotationDegrees = 0f,
@@ -135,6 +135,33 @@ class SignEditorViewModel @Inject constructor(
 
     fun update(annotation: Annotation) {
         _annotations.value = _annotations.value.map { if (it.id == annotation.id) annotation else it }
+    }
+
+    /**
+     * Applies incremental gesture deltas to the CURRENT annotation (not a stale
+     * captured copy), so dragging/pinching accumulate correctly across frames.
+     * Pan is expressed as a fraction of the page (dx/pageWidth, dy/pageHeight).
+     */
+    fun applyTransform(
+        id: String,
+        panFractionX: Float,
+        panFractionY: Float,
+        zoom: Float,
+        rotation: Float,
+    ) {
+        _annotations.value = _annotations.value.map {
+            if (it.id != id) {
+                it
+            } else {
+                it.copy(
+                    centerX = (it.centerX + panFractionX).coerceIn(0f, 1f),
+                    centerY = (it.centerY + panFractionY).coerceIn(0f, 1f),
+                    widthFraction = (it.widthFraction * zoom).coerceIn(0.05f, 2f),
+                    rotationDegrees = it.rotationDegrees + rotation,
+                )
+            }
+        }
+        _selectedId.value = id
     }
 
     fun updateDateText(id: String, text: String) {

@@ -125,7 +125,7 @@ fun SignEditorScreen(
                         selectedId = selectedId,
                         resolve = viewModel::resolve,
                         onSelect = viewModel::select,
-                        onTransform = viewModel::update,
+                        onTransform = viewModel::applyTransform,
                     )
                 }
             }
@@ -170,7 +170,7 @@ private fun PageSigningCanvas(
     selectedId: String?,
     resolve: (String) -> Any,
     onSelect: (String?) -> Unit,
-    onTransform: (Annotation) -> Unit,
+    onTransform: (id: String, panFractionX: Float, panFractionY: Float, zoom: Float, rotation: Float) -> Unit,
 ) {
     val density = LocalDensity.current
     val aspect = if (page.height > 0) page.width.toFloat() / page.height else 0.707f
@@ -226,7 +226,7 @@ private fun OverlayItem(
     selected: Boolean,
     resolve: (String) -> Any,
     onSelect: () -> Unit,
-    onTransform: (Annotation) -> Unit,
+    onTransform: (id: String, panFractionX: Float, panFractionY: Float, zoom: Float, rotation: Float) -> Unit,
 ) {
     val density = LocalDensity.current
     val wPx = annotation.widthFraction * boxWidthPx
@@ -241,15 +241,8 @@ private fun OverlayItem(
         .pointerInput(annotation.id) { detectTapGestures { onSelect() } }
         .pointerInput(annotation.id) {
             detectTransformGestures { _, pan, zoom, rotation ->
-                onSelect()
-                onTransform(
-                    annotation.copy(
-                        centerX = (annotation.centerX + pan.x / boxWidthPx).coerceIn(0f, 1f),
-                        centerY = (annotation.centerY + pan.y / boxHeightPx).coerceIn(0f, 1f),
-                        widthFraction = (annotation.widthFraction * zoom).coerceIn(0.05f, 2f),
-                        rotationDegrees = annotation.rotationDegrees + rotation,
-                    ),
-                )
+                // Pass per-frame deltas; the ViewModel accumulates onto current state.
+                onTransform(annotation.id, pan.x / boxWidthPx, pan.y / boxHeightPx, zoom, rotation)
             }
         }
 
