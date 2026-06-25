@@ -6,6 +6,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.aurorascan.core.model.OcrStatus
+import com.aurorascan.data.local.entity.AnnotationEntity
+import com.aurorascan.data.local.entity.AssetEntity
 import com.aurorascan.data.local.entity.DocumentEntity
 import com.aurorascan.data.local.entity.OcrPageEntity
 import com.aurorascan.data.local.entity.PageEntity
@@ -84,4 +86,36 @@ interface OcrDao {
 
     @Query("SELECT * FROM ocr_pages WHERE pageId IN (:pageIds)")
     suspend fun getForPages(pageIds: List<String>): List<OcrPageEntity>
+}
+
+@Dao
+interface AssetDao {
+
+    @Query("SELECT * FROM assets WHERE kind = :kind ORDER BY createdAt DESC")
+    fun observeByKind(kind: String): Flow<List<AssetEntity>>
+
+    @Query("SELECT * FROM assets WHERE id = :id")
+    suspend fun getById(id: String): AssetEntity?
+
+    @Upsert
+    suspend fun upsert(asset: AssetEntity)
+
+    @Query("DELETE FROM assets WHERE id = :id")
+    suspend fun delete(id: String)
+}
+
+@Dao
+interface AnnotationDao {
+
+    @Query("SELECT * FROM annotations WHERE pageId = :pageId ORDER BY zIndex ASC")
+    fun observeForPage(pageId: String): Flow<List<AnnotationEntity>>
+
+    @Query("SELECT * FROM annotations WHERE pageId IN (:pageIds) ORDER BY zIndex ASC")
+    suspend fun getForPages(pageIds: List<String>): List<AnnotationEntity>
+
+    @Upsert
+    suspend fun upsert(annotation: AnnotationEntity)
+
+    @Query("DELETE FROM annotations WHERE id = :id")
+    suspend fun delete(id: String)
 }

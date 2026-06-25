@@ -99,3 +99,34 @@ data class DocumentWithPages(
     val document: Document,
     val pages: List<Page>,
 )
+
+/** Reusable signature or stamp stored as a transparent PNG (background removed). */
+enum class AssetKind { SIGNATURE, STAMP }
+
+data class SignatureAsset(
+    val id: String,
+    val kind: AssetKind,
+    val path: String,
+    val createdAtEpochMs: Long,
+)
+
+/** Non-destructive overlay placed on a page (blueprint 21.1). */
+enum class AnnotationType { SIGNATURE, STAMP, DATE }
+
+data class Annotation(
+    val id: String,
+    val pageId: String,
+    val type: AnnotationType,
+    /** Relative path to the transparent PNG for SIGNATURE/STAMP; null for DATE. */
+    val assetPath: String?,
+    /** Text content for DATE; null otherwise. */
+    val text: String?,
+    /** Normalized center within the page (0..1). */
+    val centerX: Float,
+    val centerY: Float,
+    /** Width as a fraction of the page width (0..1); height derived from aspect. */
+    val widthFraction: Float,
+    val aspectRatio: Float,
+    val rotationDegrees: Float,
+    val zIndex: Int,
+)

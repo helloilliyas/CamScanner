@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.DocumentScanner
+import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +57,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onOpenDocument: (String) -> Unit,
+    onOpenSignatures: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -111,7 +113,16 @@ fun HomeScreen(
     )
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Documents") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Documents") },
+                actions = {
+                    androidx.compose.material3.IconButton(onClick = onOpenSignatures) {
+                        Icon(Icons.Outlined.Draw, contentDescription = "Manage signatures")
+                    }
+                },
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = { ScanModeBar(modes) },
     ) { padding ->

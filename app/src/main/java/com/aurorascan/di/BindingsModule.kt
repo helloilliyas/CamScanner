@@ -2,6 +2,8 @@ package com.aurorascan.di
 
 import com.aurorascan.data.repository.DocumentRepository
 import com.aurorascan.data.repository.DocumentRepositoryImpl
+import com.aurorascan.data.repository.SignatureRepository
+import com.aurorascan.data.repository.SignatureRepositoryImpl
 import com.aurorascan.engine.ocr.MlKitOcrEngine
 import com.aurorascan.engine.ocr.OcrEngine
 import com.aurorascan.engine.pdf.AndroidPdfEngine
@@ -38,4 +40,8 @@ abstract class BindingsModule {
     @Binds
     @Singleton
     abstract fun bindDocumentRepository(impl: DocumentRepositoryImpl): DocumentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSignatureRepository(impl: SignatureRepositoryImpl): SignatureRepository
 }

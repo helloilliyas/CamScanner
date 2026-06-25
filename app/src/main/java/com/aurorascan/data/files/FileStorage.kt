@@ -121,6 +121,29 @@ class FileStorage @Inject constructor(
         )
     }
 
+    private val assetsRoot: File get() = File(context.filesDir, "signatures").apply { mkdirs() }
+
+    /** Persists a transparent PNG asset (signature/stamp) and returns its relative path. */
+    suspend fun writeAssetPng(assetId: String, bitmap: Bitmap): String =
+        withContext(Dispatchers.IO) {
+            val finalFile = File(assetsRoot, "$assetId.png")
+            val tmpFile = File(assetsRoot, "$assetId.png.tmp")
+            val bytes = ByteArrayOutputStream().use { stream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                stream.toByteArray()
+            }
+            tmpFile.outputStream().use { it.write(bytes); it.flush() }
+            check(tmpFile.length() > 0) { "Asset image is empty" }
+            if (finalFile.exists()) finalFile.delete()
+            check(tmpFile.renameTo(finalFile)) { "Atomic rename failed for $finalFile" }
+            relativeOf(finalFile)
+        }
+
+    suspend fun deleteRelative(relativePath: String) = withContext(Dispatchers.IO) {
+        runCatching { resolve(relativePath).delete() }
+        Unit
+    }
+
     /** Removes interrupted temporary files on startup (blueprint 12). */
     suspend fun cleanupTempFiles() = withContext(Dispatchers.IO) {
         root.walkTopDown()

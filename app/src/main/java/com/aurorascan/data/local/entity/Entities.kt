@@ -76,3 +76,39 @@ data class OcrPageEntity(
     val averageConfidence: Float?,
     val createdAt: Long,
 )
+
+@Entity(tableName = "assets")
+data class AssetEntity(
+    @PrimaryKey val id: String,
+    val kind: String,
+    val path: String,
+    val createdAt: Long,
+)
+
+@Entity(
+    tableName = "annotations",
+    foreignKeys = [
+        ForeignKey(
+            entity = PageEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["pageId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("pageId")],
+)
+data class AnnotationEntity(
+    @PrimaryKey val id: String,
+    val pageId: String,
+    val type: String,
+    val assetPath: String?,
+    val text: String?,
+    val centerX: Float,
+    val centerY: Float,
+    val widthFraction: Float,
+    val aspectRatio: Float,
+    val rotationDegrees: Float,
+    val zIndex: Int,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
