@@ -3,6 +3,7 @@ package com.aurorascan.ui.sign
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -46,11 +49,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -126,6 +131,7 @@ fun SignEditorScreen(
                         resolve = viewModel::resolve,
                         onSelect = viewModel::select,
                         onTransform = viewModel::applyTransform,
+                        onResize = viewModel::resizeByFraction,
                     )
                 }
             }
@@ -171,6 +177,7 @@ private fun PageSigningCanvas(
     resolve: (String) -> Any,
     onSelect: (String?) -> Unit,
     onTransform: (id: String, panFractionX: Float, panFractionY: Float, zoom: Float, rotation: Float) -> Unit,
+    onResize: (id: String, deltaFraction: Float) -> Unit,
 ) {
     val density = LocalDensity.current
     val aspect = if (page.height > 0) page.width.toFloat() / page.height else 0.707f
@@ -212,6 +219,7 @@ private fun PageSigningCanvas(
                     resolve = resolve,
                     onSelect = { onSelect(ann.id) },
                     onTransform = onTransform,
+                    onResize = { delta -> onResize(ann.id, delta) },
                 )
             }
         }
@@ -227,6 +235,7 @@ private fun OverlayItem(
     resolve: (String) -> Any,
     onSelect: () -> Unit,
     onTransform: (id: String, panFractionX: Float, panFractionY: Float, zoom: Float, rotation: Float) -> Unit,
+    onResize: (deltaFraction: Float) -> Unit,
 ) {
     val density = LocalDensity.current
     val wPx = annotation.widthFraction * boxWidthPx
@@ -256,7 +265,10 @@ private fun OverlayItem(
                 text = annotation.text.orEmpty(),
                 color = Color.Black,
                 maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Visible,
                 fontSize = with(density) { (hPx * 0.7f).toSp() },
+                modifier = Modifier.wrapContentWidth(unbounded = true),
             )
         } else if (annotation.assetPath != null) {
             AsyncImage(
@@ -264,6 +276,23 @@ private fun OverlayItem(
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .border(2.dp, Color.White, CircleShape)
+                    .pointerInput(annotation.id) {
+                        detectDragGestures { change, drag ->
+                            change.consume()
+                            onResize((drag.x + drag.y) / 2f / boxWidthPx)
+                        }
+                    },
             )
         }
     }

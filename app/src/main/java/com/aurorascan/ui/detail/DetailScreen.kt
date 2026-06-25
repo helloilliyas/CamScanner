@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -261,7 +262,10 @@ private fun PageItem(
                             text = ann.text.orEmpty(),
                             color = Color.Black,
                             maxLines = 1,
+                            softWrap = false,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
                             fontSize = with(density) { (hPx * 0.7f).toSp() },
+                            modifier = Modifier.wrapContentWidth(unbounded = true),
                         )
                     } else if (ann.assetPath != null) {
                         AsyncImage(

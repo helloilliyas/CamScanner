@@ -124,8 +124,8 @@ class SignEditorViewModel @Inject constructor(
             text = today,
             centerX = 0.5f,
             centerY = 0.85f,
-            widthFraction = 0.3f,
-            aspectRatio = 3.5f,
+            widthFraction = 0.32f,
+            aspectRatio = 5f,
             rotationDegrees = 0f,
             zIndex = _annotations.value.size,
         )
@@ -135,6 +135,18 @@ class SignEditorViewModel @Inject constructor(
 
     fun update(annotation: Annotation) {
         _annotations.value = _annotations.value.map { if (it.id == annotation.id) annotation else it }
+    }
+
+    /** One-finger corner-handle resize: grows/shrinks width by a page fraction. */
+    fun resizeByFraction(id: String, deltaFraction: Float) {
+        _annotations.value = _annotations.value.map {
+            if (it.id != id) {
+                it
+            } else {
+                it.copy(widthFraction = (it.widthFraction + deltaFraction).coerceIn(0.05f, 2f))
+            }
+        }
+        _selectedId.value = id
     }
 
     /**
