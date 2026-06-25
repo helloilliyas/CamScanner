@@ -1,0 +1,53 @@
+package com.aurorascan.ui.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.aurorascan.ui.detail.DetailScreen
+import com.aurorascan.ui.home.HomeScreen
+import com.aurorascan.ui.sign.SignEditorScreen
+import com.aurorascan.ui.signatures.ManageSignaturesScreen
+
+object Routes {
+    const val HOME = "home"
+    const val ARG_DOCUMENT_ID = "documentId"
+    const val DOCUMENT = "document/{$ARG_DOCUMENT_ID}"
+    const val SIGNATURES = "signatures"
+    const val SIGN = "sign/{$ARG_DOCUMENT_ID}"
+    fun document(documentId: String) = "document/$documentId"
+    fun sign(documentId: String) = "sign/$documentId"
+}
+
+@Composable
+fun AuroraNavHost() {
+    val navController = rememberNavController()
+    NavHost(navController = navController, startDestination = Routes.HOME) {
+        composable(Routes.HOME) {
+            HomeScreen(
+                onOpenDocument = { id -> navController.navigate(Routes.document(id)) },
+                onOpenSignatures = { navController.navigate(Routes.SIGNATURES) },
+            )
+        }
+        composable(Routes.SIGNATURES) {
+            ManageSignaturesScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = Routes.DOCUMENT,
+            arguments = listOf(navArgument(Routes.ARG_DOCUMENT_ID) { type = NavType.StringType }),
+        ) {
+            DetailScreen(
+                onBack = { navController.popBackStack() },
+                onSign = { documentId -> navController.navigate(Routes.sign(documentId)) },
+            )
+        }
+        composable(
+            route = Routes.SIGN,
+            arguments = listOf(navArgument(Routes.ARG_DOCUMENT_ID) { type = NavType.StringType }),
+        ) {
+            SignEditorScreen(onBack = { navController.popBackStack() })
+        }
+    }
+}
