@@ -16,6 +16,7 @@ import com.aurorascan.domain.usecase.ObserveDocumentUseCase
 import com.aurorascan.ui.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -114,7 +115,7 @@ class SignEditorViewModel @Inject constructor(
 
     fun addDate() {
         val pageId = currentPageId() ?: return
-        val today = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date())
+        val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
         val annotation = Annotation(
             id = UUID.randomUUID().toString(),
             pageId = pageId,
@@ -148,10 +149,16 @@ class SignEditorViewModel @Inject constructor(
     }
 
     fun save() {
+        val toSave = _annotations.value
+        val toRemove = removedIds.toList()
+        removedIds.clear()
+        // NonCancellable so navigating back (which clears this ViewModel) cannot
+        // cancel the write mid-flight.
         viewModelScope.launch {
-            _annotations.value.forEach { annotationRepository.upsert(it) }
-            removedIds.forEach { annotationRepository.delete(it) }
-            removedIds.clear()
+            withContext(NonCancellable) {
+                toSave.forEach { annotationRepository.upsert(it) }
+                toRemove.forEach { annotationRepository.delete(it) }
+            }
         }
     }
 

@@ -239,22 +239,22 @@ private fun OverlayItem(
         .size(with(density) { wPx.toDp() }, with(density) { hPx.toDp() })
         .graphicsLayer { rotationZ = annotation.rotationDegrees }
         .pointerInput(annotation.id) { detectTapGestures { onSelect() } }
+        .pointerInput(annotation.id) {
+            detectTransformGestures { _, pan, zoom, rotation ->
+                onSelect()
+                onTransform(
+                    annotation.copy(
+                        centerX = (annotation.centerX + pan.x / boxWidthPx).coerceIn(0f, 1f),
+                        centerY = (annotation.centerY + pan.y / boxHeightPx).coerceIn(0f, 1f),
+                        widthFraction = (annotation.widthFraction * zoom).coerceIn(0.05f, 2f),
+                        rotationDegrees = annotation.rotationDegrees + rotation,
+                    ),
+                )
+            }
+        }
 
     if (selected) {
-        modifier = modifier
-            .border(2.dp, MaterialTheme.colorScheme.primary)
-            .pointerInput(annotation.id) {
-                detectTransformGestures { _, pan, zoom, rotation ->
-                    onTransform(
-                        annotation.copy(
-                            centerX = (annotation.centerX + pan.x / boxWidthPx).coerceIn(0f, 1f),
-                            centerY = (annotation.centerY + pan.y / boxHeightPx).coerceIn(0f, 1f),
-                            widthFraction = (annotation.widthFraction * zoom).coerceIn(0.05f, 2f),
-                            rotationDegrees = annotation.rotationDegrees + rotation,
-                        ),
-                    )
-                }
-            }
+        modifier = modifier.border(2.dp, MaterialTheme.colorScheme.primary)
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {

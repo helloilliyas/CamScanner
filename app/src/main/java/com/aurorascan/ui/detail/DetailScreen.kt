@@ -6,10 +6,14 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -43,17 +47,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.aurorascan.core.model.Annotation
+import com.aurorascan.core.model.AnnotationType
 import com.aurorascan.core.model.OcrStatus
 import com.aurorascan.core.model.Page
 import com.aurorascan.ui.util.findActivity
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +77,7 @@ fun DetailScreen(
     val scope = rememberCoroutineScope()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val exporting by viewModel.exporting.collectAsStateWithLifecycle()
+    val annotationsByPage by viewModel.annotationsByPage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var renaming by remember { mutableStateOf(false) }
 
@@ -163,6 +175,8 @@ fun DetailScreen(
                     PageItem(
                         page = page,
                         imageModel = viewModel.resolve(page.renderedPath ?: page.originalPath),
+                        annotations = annotationsByPage[page.id].orEmpty(),
+                        resolve = viewModel::resolve,
                     )
                 }
             }
@@ -212,14 +226,54 @@ private fun RenameDialog(
 }
 
 @Composable
-private fun PageItem(page: Page, imageModel: Any?) {
+private fun PageItem(
+    page: Page,
+    imageModel: Any?,
+    annotations: List<Annotation>,
+    resolve: (String) -> Any,
+) {
+    val density = LocalDensity.current
+    val aspect = if (page.height > 0) page.width.toFloat() / page.height else 0.707f
     Column(modifier = Modifier.fillMaxWidth()) {
-        AsyncImage(
-            model = imageModel,
-            contentDescription = "Page ${page.position + 1}",
-            modifier = Modifier.fillMaxWidth(),
-            contentScale = ContentScale.FillWidth,
-        )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().aspectRatio(aspect)) {
+            val boxWpx = constraints.maxWidth.toFloat()
+            val boxHpx = constraints.maxHeight.toFloat()
+            AsyncImage(
+                model = imageModel,
+                contentDescription = "Page ${page.position + 1}",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds,
+            )
+            annotations.forEach { ann ->
+                val wPx = ann.widthFraction * boxWpx
+                val hPx = if (ann.aspectRatio > 0f) wPx / ann.aspectRatio else wPx
+                val leftPx = ann.centerX * boxWpx - wPx / 2f
+                val topPx = ann.centerY * boxHpx - hPx / 2f
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
+                        .size(with(density) { wPx.toDp() }, with(density) { hPx.toDp() })
+                        .graphicsLayer { rotationZ = ann.rotationDegrees },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (ann.type == AnnotationType.DATE) {
+                        Text(
+                            text = ann.text.orEmpty(),
+                            color = Color.Black,
+                            maxLines = 1,
+                            fontSize = with(density) { (hPx * 0.7f).toSp() },
+                        )
+                    } else if (ann.assetPath != null) {
+                        AsyncImage(
+                            model = resolve(ann.assetPath),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            }
+        }
         Text(
             text = "Page ${page.position + 1} · ${ocrLabel(page.ocrStatus)}",
             style = MaterialTheme.typography.labelLarge,
